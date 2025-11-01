@@ -1,75 +1,66 @@
-# Next.js Routing Demo
+---
+title: Next.js 15 Fundamentals Summary
+description: Core concepts of the App Router, Routing, Layouts, and Metadata.
+---
 
-A comprehensive tutorial project demonstrating Next.js App Router features and routing patterns.
+# 🚀 Next.js 15 Fundamentals: App Router Summary
 
-## Getting Started
+This document outlines the foundational concepts of modern Next.js development using the App Router.
 
-Run the development server:
+---
 
-```bash
-pnpm dev
-```
+## 1. 🏗️ Project Structure & Conventions
 
-Open [http://localhost:3000](http://localhost:3000) to view the application.
+Next.js uses a **file-system-based router** inside the mandatory `app` directory.
 
-## Project Overview
+### Key Concepts
 
-This project demonstrates various Next.js routing concepts:
+* **App Directory (`app`)**: All routes and shared UI must reside here. The directory structure directly maps to URL paths.
+* **Special Files**: These reserved filenames define UI and behavior for a route segment:
+    * `page.js`: Defines the primary UI for a unique route.
+    * `layout.js`: Defines shared UI that wraps child routes.
+    * `not-found.js`: Defines a custom 404 error page.
 
-### 1. **Basic Routing**
-- **Static Routes**: `/about`, `/blog`, `/profile`
-- **Home Page**: `/` - Main landing page
+---
 
-### 2. **Route Groups** - `(auth)`
-Routes grouped for organization without affecting URL structure:
-- `/login` - Login page
-- `/register` - Registration page  
-- `/forgot-password` - Password recovery page
+## 2. 🧭 Routing & Navigation
 
-### 3. **Dynamic Routes** - `[productId]`
-- `/products` - Products listing
-- `/products/[productId]` - Individual product pages (e.g., `/products/1`, `/products/22`)
-- `/products/[productId]/reviews` - Product reviews
-- `/products/[productId]/reviews/[reviewId]` - Individual review pages
+Routing governs how paths map to code using specific directory naming conventions.
 
-### 4. **Catch-All Routes** - `[...slug]`
-- `/docs/[...slug]` - Documentation with flexible nested paths (e.g., `/docs/feature/api/reference`)
+| Routing Type | Syntax/Convention | Purpose | Example URL |
+| :--- | :--- | :--- | :--- |
+| **Basic** | `folderName/page.js` | Defines a single route segment. | `/products` |
+| **Nested** | Nested folders | Creates hierarchical URL paths. | `/dashboard/settings` |
+| **Dynamic** | `[paramName]` | Captures a variable part of the URL (accessible via `params`). | `/users/42` |
+| **Catch-All** | `[...paramName]` | Captures all subsequent path segments as an array. | `/docs/a/b/c` |
+| **Group** | `(folderName)` | **Organizes files without affecting the URL**. Great for multiple top-level layouts. | `/login` (folder is `app/(auth)/login`) |
+| **Private** | `_folderName` | Excludes a directory from routing. Used for local components or utility files. | *(Not accessible)* |
 
-### 5. **Nested Layouts**
-- **Root Layout** (`app/layout.tsx`) - Global navigation and footer
-- **Products Layout** (`app/products/layout.tsx`) - Shared layout for all product pages
+---
 
-### 6. **Private Routes** - `_lib`
-- Files/folders prefixed with `_` are private and not accessible via URL
-- Example: `/_lib` returns 404
+## 3. 🎨 Layouts, UI, and Metadata
 
-### 7. **Special Files**
-- **Custom 404 Pages**: `not-found.tsx` for custom error handling
-- **Metadata**: SEO-friendly page titles and descriptions
+Layouts and metadata are essential for consistent UI and SEO.
 
-### 8. **URL Encoding**
-- `%5Funderscore-route` - Demonstrates URL-encoded route handling
+### A. Layout Management
 
-## Tech Stack
+| Layout Type | Definition | Usage |
+| :--- | :--- | :--- |
+| **Root Layout** | `app/layout.js` | **Mandatory**. Wraps the entire application, defining `<html>` and `<body>` tags. |
+| **Scoped Layout** | `layout.js` in a subdirectory | Wraps all pages and nested layouts within that directory. |
+| **Multiple Layouts** | Achieved with **Group Routing** | Allows distinct top-level layouts (e.g., public vs. admin) while maintaining clean URLs. |
 
-- **Next.js 16** - React framework with App Router
-- **React 19** - UI library
-- **TypeScript** - Type safety
-- **Tailwind CSS v4** - Styling
-- **Typed Routes** - Type-safe navigation
+### B. Not Found Handling
 
-## Key Features Demonstrated
+* **Global Not Found**: Defined by `app/not-found.js`.
+* **Local Not Found**: Defined by a local `not-found.js` file. To trigger it manually from code (e.g., if a database item is missing), you must call the **`notFound()` function**.
 
-- File-based routing system
-- Nested layouts and route groups
-- Dynamic and catch-all segments
-- Custom 404 pages
-- Client-side navigation with `<Link>`
-- TypeScript integration with typed routes
-- Tailwind CSS styling
+### C. Metadata (SEO)
 
-## Learn More
+Metadata must always be defined in **Server Components** (`page.js` or `layout.js`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
-- [Next.js Routing](https://nextjs.org/docs/app/building-your-application/routing) - Deep dive into routing
-- [App Router](https://nextjs.org/docs/app) - Understanding the App Router architecture
+| Metadata Goal | Configuration Method | Key Detail |
+| :--- | :--- | :--- |
+| **Global Defaults** | Exported `metadata` object in `app/layout.js`. | Use `title: { default: '...', template: '...' }` to create a consistent title structure. |
+| **Local Overrides** | Exported `metadata` object in a specific `page.js`. | Use `title: { absolute: '...' }` to ignore the global template for that page. |
+| **Dynamic Content** | Export an **`async function generateMetadata({ params })`**. | Allows you to fetch data based on route parameters and generate dynamic titles/descriptions. |
