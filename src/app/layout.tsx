@@ -1,6 +1,6 @@
-import Link from "next/link";
 import "./globals.css";
 import { Metadata } from "next";
+import Navbar from "./components/Navbar";
 
 export const metadata: Metadata = {
     title: {
@@ -17,27 +17,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </head>
         <body>
             <header>
-                <nav>
-                    <ul className="flex gap-4 bg-slate-600 text-white p-4">
-                        <li><Link href="/">Home</Link></li>
-                        <li><Link href="/about">About</Link></li>
-                        <li><Link href="/counter">Counter</Link></li>
-                        <li><Link href="/blog">Blog</Link></li>
-                        <li><Link href="/products">Products</Link></li>
-                        <li><Link href="/docs">Docs</Link></li>
-                        <li><Link href="/login">Login</Link></li>
-                        <li><Link href="/register">Register</Link></li>
-                        <li><Link href="/forgot-password">Forgot Password</Link></li>
-                        <li><Link href="/profile">Profile</Link></li>
-                        <li><Link href="/private-route">Private Route</Link></li>
-                        <li><Link href="/_underscore-route">Underscore Route</Link></li>
-                    </ul>
-                </nav>
+                <Navbar />
             </header>
             {children}
             <footer className="flex bg-slate-600 justify-center p-4 text-white">
                 <p>Footer</p>
             </footer>
-            </body>
+        </body>
     </html>;
 }

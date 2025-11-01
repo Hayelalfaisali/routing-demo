@@ -38,6 +38,67 @@ Routing governs how paths map to code using specific directory naming convention
 
 ---
 
+### 🧰 Router Navigation: `push` vs. `replace`
+
+When navigating programmatically using the `useRouter()` hook or the `<Link>` component's `replace` prop, you control the browser's history stack.
+
+| Prop | Behavior | Browser History Effect |
+| :--- | :--- | :--- |
+| **(default)** | `push` navigation | **Adds a new entry** to the history stack. |
+| **`replace`** | `replace` navigation | **Overwrites the current entry** in the history stack. |
+
+#### When to Use `replace`
+
+Use `replace` when you **don't want users to be able to navigate "back"** to the previous route.
+
+**Common Use Cases:**
+* **Login Redirects**: Redirecting a user to a dashboard after a successful login.
+* **Form Submissions**: Moving a user to a confirmation page after submitting data.
+* **Automatic Navigation**: Any internal redirect that shouldn't be part of the user's manual browsing history.
+
+**Example Code Context:**
+```javascript
+if (!user) {
+  // Overwrites the current protected route in history, 
+  // so the user cannot press "Back" to return here.
+  router.replace('/login');
+}
+```
+
+---
+
+### 🔗 Active Link Styling with `usePathname`
+
+To determine if a link is the currently active route and apply styling (e.g., highlighting), you must use the **`usePathname()`** hook.
+
+* **Rule**: `usePathname` is a **Client Component hook**, meaning the component where you use it must be marked with `"use client";`.
+* **Purpose**: It returns the **current URL pathname** (e.g., `/dashboard/settings`).
+
+**Example Code Context:**
+
+```javascript
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+export default function NavLink({ href, children }) {
+  const pathname = usePathname();
+  // Check if the current URL matches the link's href
+  const isActive = pathname === href;
+
+  return (
+    <Link 
+      href={href} 
+      className={isActive ? 'text-blue-500 font-bold' : 'text-gray-500'}
+    >
+      {children}
+    </Link>
+  );
+}
+
+---
+
 ## 3. 🎨 Layouts, UI, and Metadata
 
 Layouts and metadata are essential for consistent UI and SEO.
