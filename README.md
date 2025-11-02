@@ -398,18 +398,180 @@ Layouts and metadata are essential for consistent UI and SEO.
 
 ### A. Layout Management
 
-| Layout Type          | Definition                      | Usage                                                                                    |
-| :------------------- | :------------------------------ | :--------------------------------------------------------------------------------------- |
-| **Root Layout**      | `app/layout.js`                 | **Mandatory**. Wraps the entire application, defining `<html>` and `<body>` tags.        |
-| **Scoped Layout**    | `layout.js` in a subdirectory   | Wraps all pages and nested layouts within that directory.                                |
+| Layout Type | Definition | Usage |
+| :--- | :--- | :--- |
+| **Root Layout** | `app/layout.js` | **Mandatory**. Wraps the entire application, defining `<html>` and `<body>` tags. |
+| **Scoped Layout** | `layout.js` in a subdirectory | Wraps all pages and nested layouts within that directory. |
 | **Multiple Layouts** | Achieved with **Group Routing** | Allows distinct top-level layouts (e.g., public vs. admin) while maintaining clean URLs. |
 
-### B. Not Found Handling
+---
+
+### B. Layout vs Template: Understanding the Difference
+
+Both `layout.tsx` and `template.tsx` wrap child components, but they behave **very differently** when navigating between routes.
+
+#### Key Differences
+
+| Feature | `layout.tsx` | `template.tsx` |
+| :--- | :--- | :--- |
+| **Re-renders on navigation** | ❌ No - Persists across routes | ✅ Yes - Creates new instance for each route |
+| **State preservation** | ✅ Preserved when navigating | ❌ Reset on every navigation |
+| **DOM elements** | Reused across navigations | Recreated on every navigation |
+| **Use case** | Shared UI that should persist | UI that should reset between routes |
+| **Performance** | Better (no re-render) | Slightly slower (re-renders) |
+
+---
+
+#### When to Use `layout.tsx`
+
+Use layouts when you want UI and state to **persist** across route changes.
+
+**Example: `app/(auth)/layout.tsx`** (if it were a layout)
+
+```tsx
+"use client";
+import { useState } from "react";
+import AuthNavbar from "../components/AuthNavbar";
+
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
+  const [input, setInput] = useState("");
+  
+  return (
+    <html>
+      <body>
+        <AuthNavbar />
+        <main>
+          {/* This input value PERSISTS when navigating between /login and /register */}
+          <input 
+            type="text" 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)} 
+          />
+          {children}
+        </main>
+      </body>
+    </html>
+  );
+}
+```
+
+**Behavior**: When navigating from `/login` → `/register`, the input value **stays the same**.
+
+**Use Cases:**
+- Navigation bars that should persist
+- Sidebar state (open/closed)
+- Shopping cart state
+- User authentication state
+- Any shared UI that shouldn't reset
+
+---
+
+#### When to Use `template.tsx`
+
+Use templates when you want UI and state to **reset** on every route change.
+
+**Example: `app/(auth)/template.tsx`**
+
+```tsx
+"use client";
+import { useState } from "react";
+import AuthNavbar from "../components/AuthNavbar";
+
+export default function AuthTemplate({ children }: { children: React.ReactNode }) {
+  const [input, setInput] = useState("");
+  
+  return (
+    <html>
+      <body>
+        <AuthNavbar />
+        <main>
+          {/* This input value RESETS when navigating between /login and /register */}
+          <input 
+            type="text" 
+            value={input} 
+            onChange={(e) => setInput(e.target.value)} 
+          />
+          {children}
+        </main>
+      </body>
+    </html>
+  );
+}
+```
+
+**Behavior**: When navigating from `/login` → `/register`, the input value **resets to empty**.
+
+**Use Cases:**
+- Forms that should clear between pages
+- Animations that should replay on each page
+- Focus management that should reset
+- Temporary UI state (modals, tooltips)
+- Page-specific filters or search inputs
+
+---
+
+#### Visual Comparison
+
+**With `layout.tsx`:**
+```
+User types "hello" in input on /login
+↓
+Navigates to /register
+↓
+Input still shows "hello" ✅ (State persisted)
+```
+
+**With `template.tsx`:**
+```
+User types "hello" in input on /login
+↓
+Navigates to /register
+↓
+Input is empty "" ✅ (State reset)
+```
+
+---
+
+#### Technical Details
+
+**Layout Behavior:**
+- Component instance is created once
+- React maintains the component tree
+- Only child content (`{children}`) updates
+- State, refs, and effects persist
+
+**Template Behavior:**
+- New component instance created on each navigation
+- React unmounts and remounts the entire template
+- All state is reset to initial values
+- Effects run again (useEffect cleanup + setup)
+
+---
+
+#### Can You Use Both?
+
+Yes! You can have both `layout.tsx` and `template.tsx` in the same directory. The structure will be:
+
+```
+<Layout>
+  <Template>
+    {children}
+  </Template>
+</Layout>
+```
+
+The layout wraps the template, so:
+- Layout state persists
+- Template state resets
+
+---
+
+### C. Not Found Handling
 
 - **Global Not Found**: Defined by `app/not-found.js`.
 - **Local Not Found**: Defined by a local `not-found.js` file. To trigger it manually from code (e.g., if a database item is missing), you must call the **`notFound()` function**.
 
-### C. Metadata (SEO)
+### D. Metadata (SEO)
 
 Metadata must always be defined in **Server Components** (`page.js` or `layout.js`).
 

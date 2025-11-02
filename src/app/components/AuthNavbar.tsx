@@ -1,21 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-export default function Navbar() {
+export default function AuthNavbar() {
     const pathname = usePathname();
     const routes = [
         { path: "/", label: "Home" },
-        { path: "/about", label: "About" },
-        { path: "/counter", label: "Counter" },
-        { path: "/blog", label: "Blog" },
-        { path: "/articles", label: "Articles" },
-        { path: "/order-product", label: "Order Product" },
-        { path: "/products", label: "Products" },
-        { path: "/docs/features/concept1", label: "Docs" },
-        { path: "/login", label: "Account" },
-        { path: "/profile", label: "Profile" },
-        { path: "/_lib", label: "Private Route" },
-        { path: "/_underscore-route", label: "Underscore Route" },
+        { path: "/login", label: "Login" },
+        { path: "/register", label: "Register" },
+        { path: "/forgot-password", label: "Forgot Password" },
+  
     ]
     return (
         <nav>
