@@ -745,12 +745,327 @@ app/dashboard/
 
 ---
 
-### C. Not Found Handling
+### D. Error Handling with `error.tsx`
+
+Next.js provides a powerful error handling system using `error.tsx` files. These files automatically create error boundaries that catch errors in their route segment and child segments.
+
+#### How Error Boundaries Work
+
+Error boundaries in Next.js:
+1. **Catch runtime errors** in Server and Client Components
+2. **Display fallback UI** instead of crashing the entire app
+3. **Provide recovery mechanisms** (reset/retry functionality)
+4. **Follow a hierarchy** - errors bubble up to the nearest error boundary
+
+---
+
+#### Basic Error Boundary
+
+**File: `app/error/error.tsx`**
+
+```tsx
+"use client"; // Error boundaries MUST be Client Components
+
+import { useRouter } from "next/navigation";
+import { startTransition } from "react";
+
+export default function ErrorBoundary({ 
+  error, 
+  reset 
+}: { 
+  error: Error, 
+  reset: () => void 
+}) {
+  const router = useRouter();
+  
+  const reload = () => {
+    startTransition(() => {
+      router.refresh(); // Refresh server data
+      reset();          // Reset error boundary
+    });
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <h1>{error.message}</h1>
+      <button 
+        className="bg-slate-600 text-white p-2 cursor-pointer" 
+        onClick={reload}
+      >
+        Try Again
+      </button>
+    </div>
+  );
+}
+```
+
+**Props Provided:**
+- **`error`**: The error object that was thrown
+- **`reset`**: Function to reset the error boundary and re-render the segment
+
+---
+
+#### Error Hierarchy
+
+Error boundaries follow a hierarchical structure. Errors bubble up to the **nearest parent** `error.tsx` file.
+
+**Directory Structure:**
+
+```
+app/
+├── global-error.tsx           ← Catches errors in root layout
+├── (main)/
+│   ├── layout.tsx             ← Root layout
+│   ├── error/
+│   │   ├── error.tsx          ← Catches errors in /error and children
+│   │   ├── page.tsx
+│   │   └── error1/
+│   │       ├── layout.tsx     ← Can throw errors
+│   │       ├── page.tsx
+│   │       └── error2/
+│   │           └── error3/
+│   │               └── page.tsx
+```
+
+**Error Catching Rules:**
+
+| Error Location | Caught By |
+| :--- | :--- |
+| Error in `/error/error1/error2/error3/page.tsx` | `/error/error.tsx` |
+| Error in `/error/error1/layout.tsx` | `/error/error.tsx` |
+| Error in `/error/page.tsx` | `/error/error.tsx` |
+| Error in root `layout.tsx` | `global-error.tsx` |
+
+---
+
+#### Example: Error in Nested Layout
+
+**File: `app/error/error1/layout.tsx`**
+
+```tsx
+const getRandomInit = (max: number) => {
+  return Math.floor(Math.random() * max);
+};
+
+export default function ErrorLayout({ children }: { children: React.ReactNode }) {
+  const random = getRandomInit(2);
+  
+  // 50% chance to throw an error
+  if (random === 1) {
+    throw new Error("Error in layout of page 1");
+  }
+  
+  return (
+    <div>
+      <footer>Error hierarchy example</footer>
+      {children}
+    </div>
+  );
+}
+```
+
+**Behavior:**
+- When error is thrown, it's caught by `/error/error.tsx`
+- The error boundary displays the fallback UI
+- User can click "Try Again" to retry
+
+---
+
+#### Global Error Boundary
+
+`global-error.tsx` is a special error boundary that catches errors in the **root layout**. It must include its own `<html>` and `<body>` tags.
+
+**File: `app/global-error.tsx`**
+
+```tsx
+"use client";
+
+import "./globals.css";
+
+export default function GlobalError() {
+  return (
+    <html lang="en">
+      <body>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
+          <button
+            onClick={() => {
+              window.location.reload(); // Full page reload
+            }}
+            className="bg-blue-500 text-white font-bold py-2 px-4 rounded"
+          >
+            Refresh
+          </button>
+        </div>
+      </body>
+    </html>
+  );
+}
+```
+
+**When to Use:**
+- Catches errors in the root `layout.tsx`
+- Last resort error boundary
+- Rarely triggered in production
+
+---
+
+#### Error Simulator for Testing
+
+You can create a component to simulate errors for testing purposes:
+
+**File: `app/(main)/error-wrapper.tsx`**
+
+```tsx
+"use client";
+import { useState } from "react";
+
+const ErrorSimulator = ({ message = "An error occurred" }: { message?: string }) => {
+  const [error, setError] = useState(false);
+
+  if (error) throw new Error(message);
+
+  return (
+    <button
+      className="bg-red-500 text-white p-2 rounded"
+      onClick={() => setError(true)}
+    >
+      Simulate Error
+    </button>
+  );
+};
+
+export const ErrorWrapper = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <div className="relative p-4 border border-gray-300">
+      <div className="absolute top-0 left-4">
+        <ErrorSimulator message="Simulated error in root layout" />
+      </div>
+      {children}
+    </div>
+  );
+};
+```
+
+**Usage in Layout:**
+
+```tsx
+import { ErrorWrapper } from "./error-wrapper";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <main>
+      <ErrorWrapper>
+        {children}
+      </ErrorWrapper>
+    </main>
+  );
+}
+```
+
+---
+
+#### Error Boundary Limitations
+
+⚠️ **Important Limitations:**
+
+| What Error Boundaries Catch | What They DON'T Catch |
+| :--- | :--- |
+| ✅ Errors in Server Components | ❌ Errors in the same `layout.tsx` where `error.tsx` is defined |
+| ✅ Errors in Client Components | ❌ Errors in `error.tsx` itself |
+| ✅ Errors during rendering | ❌ Errors in event handlers (use try-catch) |
+| ✅ Errors in child components | ❌ Errors in async code outside rendering |
+
+**Example - Error in Same Layout:**
+
+```
+app/
+├── error/
+│   ├── error.tsx      ← Cannot catch errors in layout.tsx at same level
+│   ├── layout.tsx     ← Errors here bubble up to parent error.tsx
+│   └── page.tsx       ← Errors here are caught by error.tsx
+```
+
+---
+
+#### Best Practices
+
+| Practice | Description |
+| :--- | :--- |
+| **Always use "use client"** | Error boundaries must be Client Components |
+| **Provide recovery options** | Include "Try Again" or "Go Home" buttons |
+| **Log errors** | Send error details to monitoring services (Sentry, LogRocket) |
+| **User-friendly messages** | Don't show technical stack traces to users |
+| **Test error boundaries** | Use error simulators to test error handling |
+| **Granular boundaries** | Place error.tsx at appropriate levels for better UX |
+
+---
+
+#### Recovery Strategies
+
+**1. Reset Error Boundary**
+```tsx
+<button onClick={() => reset()}>
+  Try Again
+</button>
+```
+
+**2. Refresh Server Data**
+```tsx
+<button onClick={() => {
+  router.refresh();
+  reset();
+}}>
+  Reload Data
+</button>
+```
+
+**3. Navigate Away**
+```tsx
+<button onClick={() => router.push("/")}>
+  Go Home
+</button>
+```
+
+**4. Full Page Reload (Last Resort)**
+```tsx
+<button onClick={() => window.location.reload()}>
+  Refresh Page
+</button>
+```
+
+---
+
+#### Error Hierarchy Visual
+
+```
+┌─────────────────────────────────────┐
+│ global-error.tsx                    │ ← Catches root layout errors
+│  ┌───────────────────────────────┐  │
+│  │ Root Layout                   │  │
+│  │  ┌─────────────────────────┐  │  │
+│  │  │ /error/error.tsx        │  │  │ ← Catches /error/* errors
+│  │  │  ┌───────────────────┐  │  │  │
+│  │  │  │ /error/page.tsx   │  │  │  │
+│  │  │  └───────────────────┘  │  │  │
+│  │  │  ┌───────────────────┐  │  │  │
+│  │  │  │ /error/error1/    │  │  │  │
+│  │  │  │   layout.tsx      │  │  │  │ ← Error here caught by parent
+│  │  │  │   page.tsx        │  │  │  │
+│  │  │  └───────────────────┘  │  │  │
+│  │  └─────────────────────────┘  │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
+```
+
+---
+
+### E. Not Found Handling
 
 - **Global Not Found**: Defined by `app/not-found.js`.
 - **Local Not Found**: Defined by a local `not-found.js` file. To trigger it manually from code (e.g., if a database item is missing), you must call the **`notFound()` function**.
 
-### D. Metadata (SEO)
+### F. Metadata (SEO)
 
 Metadata must always be defined in **Server Components** (`page.js` or `layout.js`).
 

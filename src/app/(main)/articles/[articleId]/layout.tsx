@@ -1,4 +1,4 @@
-export default async function ArticleLayout({ children,params}: { children: React.ReactNode,params: {articleId: string} }) {
+export default async function ArticleLayout({ children,params}: { children: React.ReactNode,params: Promise<{articleId: string}> }) {
     const {articleId} = await params;
     // const {lang} = await searchParams;
     return <div>

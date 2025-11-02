@@ -1,7 +1,7 @@
 import "../globals.css";
 import { Metadata } from "next";
 import Navbar from "../components/Navbar";
-
+import { ErrorWrapper } from "./error-wrapper";
 export const metadata: Metadata = {
     title: {
         template: "%s | Next.js",
@@ -20,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Navbar />
             </header>
             <main className="flex-1 items-center justify-center">
+                <ErrorWrapper>
             {children}
+            </ErrorWrapper>
             </main>
             <footer className="flex bg-slate-600 justify-center p-4 text-white">
                 <p>Footer</p>
