@@ -8,6 +8,8 @@ export default function Navbar() {
         { path: "/about", label: "About" },
         { path: "/counter", label: "Counter" },
         { path: "/blog", label: "Blog" },
+        { path: "/articles", label: "Articles" },
+        { path: "/order-product", label: "Order Product" },
         { path: "/products", label: "Products" },
         { path: "/docs/features/concept1", label: "Docs" },
         { path: "/login", label: "Login" },

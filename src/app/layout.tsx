@@ -15,11 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <head>
             <title>Routing Demo</title>
         </head>
-        <body>
+        <body className="flex flex-col min-h-screen">
             <header>
                 <Navbar />
             </header>
+            <main className="flex-1 items-center justify-center">
             {children}
+            </main>
             <footer className="flex bg-slate-600 justify-center p-4 text-white">
                 <p>Footer</p>
             </footer>
