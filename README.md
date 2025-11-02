@@ -19,6 +19,9 @@ Next.js uses a **file-system-based router** inside the mandatory `app` directory
 - **Special Files**: These reserved filenames define UI and behavior for a route segment:
   - `page.js`: Defines the primary UI for a unique route.
   - `layout.js`: Defines shared UI that wraps child routes.
+  - `template.js`: Similar to layout but re-renders on navigation.
+  - `loading.js`: Defines loading UI shown while page content loads.
+  - `error.js`: Defines error UI for handling errors in a route segment.
   - `not-found.js`: Defines a custom 404 error page.
 
 ---
@@ -563,6 +566,182 @@ Yes! You can have both `layout.tsx` and `template.tsx` in the same directory. Th
 The layout wraps the template, so:
 - Layout state persists
 - Template state resets
+
+---
+
+### C. Loading States with `loading.tsx`
+
+The `loading.tsx` file is a special file that automatically creates a loading UI shown while a page or route segment is loading. It uses React Suspense under the hood.
+
+#### How It Works
+
+When you navigate to a route with a `loading.tsx` file:
+1. The loading UI is shown **immediately**
+2. The page content loads in the background
+3. Once loaded, the loading UI is automatically replaced with the page content
+
+#### Basic Example
+
+**File: `app/blog/loading.tsx`**
+
+```tsx
+export default function Loading() {
+  return <p>Loading...</p>;
+}
+```
+
+**File: `app/blog/page.tsx`**
+
+```tsx
+export default async function Blog() {
+  // Simulate slow data fetch (2 seconds)
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  
+  return <h1>Blog</h1>;
+}
+```
+
+**User Experience:**
+1. User navigates to `/blog`
+2. Sees "Loading..." immediately
+3. After 2 seconds, sees "Blog" heading
+
+---
+
+#### Scope and Hierarchy
+
+The `loading.tsx` file applies to:
+- The `page.tsx` in the same directory
+- All nested route segments (unless they have their own `loading.tsx`)
+
+**Example Directory Structure:**
+
+```
+app/
+├── blog/
+│   ├── loading.tsx        ← Applies to /blog and /blog/[id]
+│   ├── page.tsx           ← Shows loading.tsx while loading
+│   └── [id]/
+│       └── page.tsx       ← Also shows parent loading.tsx
+└── products/
+    ├── loading.tsx        ← Different loading UI for products
+    └── page.tsx
+```
+
+---
+
+#### Styling Loading States
+
+You can create more sophisticated loading UIs:
+
+**Example: Skeleton Loading**
+
+```tsx
+export default function Loading() {
+  return (
+    <div className="animate-pulse">
+      <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-5/6 mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+    </div>
+  );
+}
+```
+
+**Example: Spinner**
+
+```tsx
+export default function Loading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+  );
+}
+```
+
+---
+
+#### When Loading UI is Shown
+
+Loading UI appears when:
+- **Initial navigation** to a route with async Server Components
+- **Route transitions** that require data fetching
+- **Slow network** or database queries
+
+Loading UI does NOT appear when:
+- Using Client Components without async data fetching
+- Data is already cached
+- Navigation is instant (no async operations)
+
+---
+
+#### Loading UI vs Suspense Boundaries
+
+`loading.tsx` is essentially a convenient wrapper around React Suspense:
+
+**Using `loading.tsx`:**
+```tsx
+// app/blog/loading.tsx
+export default function Loading() {
+  return <p>Loading...</p>;
+}
+```
+
+**Equivalent with Suspense (manual):**
+```tsx
+// app/blog/layout.tsx
+import { Suspense } from "react";
+
+export default function BlogLayout({ children }) {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      {children}
+    </Suspense>
+  );
+}
+```
+
+The `loading.tsx` approach is simpler and recommended for most cases.
+
+---
+
+#### Best Practices
+
+| Practice | Description |
+| :--- | :--- |
+| **Match the layout** | Loading UI should match the expected page structure (headers, sidebars, etc.) |
+| **Use skeletons** | Skeleton screens provide better UX than spinners for content-heavy pages |
+| **Keep it simple** | Loading UI should be lightweight and render instantly |
+| **Consider placement** | Place `loading.tsx` at the appropriate level (route-specific vs. shared) |
+| **Avoid heavy logic** | Don't fetch data or run expensive operations in loading components |
+
+---
+
+#### Common Use Cases
+
+**1. Blog Posts with Slow Database Queries**
+```
+app/blog/
+├── loading.tsx    ← "Loading posts..."
+└── page.tsx       ← Fetches posts from database
+```
+
+**2. Product Pages with API Calls**
+```
+app/products/
+├── [id]/
+│   ├── loading.tsx    ← Product skeleton
+│   └── page.tsx       ← Fetches product details
+```
+
+**3. Dashboard with Multiple Data Sources**
+```
+app/dashboard/
+├── loading.tsx    ← Dashboard skeleton
+└── page.tsx       ← Fetches user data, analytics, etc.
+```
 
 ---
 
