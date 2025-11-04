@@ -14,9 +14,11 @@ export default function Navbar() {
         { path: "/docs/features/concept1", label: "Docs" },
         { path: "/login", label: "Account" },
         { path: "/profile", label: "Profile" },
+        { path: "/photo-feed", label: "Photo Feed" },
         { path: "/_lib", label: "Private Route" },
         { path: "/_underscore-route", label: "Underscore Route" },
         { path: "/complex-dashboard", label: "Complex Dashboard" },
+        { path: "/f1", label: "F1" },
     ]
     return (
         <nav>

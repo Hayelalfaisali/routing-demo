@@ -1434,3 +1434,605 @@ export default RevenueMetricsPage;
 **`default.tsx`** ensures that parallel routes remain **resilient during navigation**. When one slot navigates to a sub-route, other slots gracefully fall back to their default content instead of breaking the layout or showing 404 errors.
 
 ---
+
+## 8. 🔗 Intercepting Routes
+
+Intercepting routes allow you to **intercept navigation** and display a different route within the current layout, while keeping the URL updated. This is commonly used for modals, overlays, and contextual content.
+
+### Concept
+
+When a user navigates via a `<Link>` component, you can "intercept" that navigation and show alternative content **without leaving the current page**. However, if the user refreshes the page or navigates directly via URL, the actual target route is displayed.
+
+**Key Use Case:** Opening a photo in a modal overlay while browsing a feed, but showing the full photo page on direct URL access or refresh.
+
+---
+
+### Convention Syntax
+
+Intercepting routes use parentheses with special dot notation to define the **relative path** to intercept:
+
+| Convention | Meaning | Intercepts From | Example |
+| :--- | :--- | :--- | :--- |
+| **`(.)`** | Same level | Current segment | `f1/(.)f2` intercepts `/f1/f2` from `/f1` |
+| **`(..)`** | One level up | Parent segment | `f1/(..f3` intercepts `/f3` from `/f1` |
+| **`(..)(..)`** | Two levels up | Grandparent segment | `f1/f2/(..)(..)f4` intercepts `/f4` from `/f1/f2` |
+| **`(...)`** | Root level | From app root | `f1/f2/inner-f2/(...)f5` intercepts `/f5` from any depth |
+
+---
+
+### Directory Structure Example
+
+```
+app/
+├── f1/
+│   ├── page.tsx                    # /f1
+│   ├── (.)f2/
+│   │   └── page.tsx               # Intercepts /f1/f2 when navigating from /f1
+│   ├── (..)f3/
+│   │   └── page.tsx               # Intercepts /f3 when navigating from /f1
+│   └── f2/
+│       ├── page.tsx                # /f1/f2 (actual route)
+│       ├── (..)(..)f4/
+│       │   └── page.tsx           # Intercepts /f4 when navigating from /f1/f2
+│       └── inner-f2/
+│           ├── page.tsx            # /f1/f2/inner-f2
+│           └── (...)f5/
+│               └── page.tsx       # Intercepts /f5 from root
+├── f3/
+│   └── page.tsx                    # /f3 (actual route)
+├── f4/
+│   └── page.tsx                    # /f4 (actual route)
+└── f5/
+    └── page.tsx                    # /f5 (actual route)
+```
+
+---
+
+### How It Works
+
+#### 1. **`(.)` - Same Level Interception**
+
+Intercepts a route at the **same segment level**.
+
+**File Structure:**
+```
+f1/
+├── page.tsx           # /f1
+├── (.)f2/
+│   └── page.tsx      # Intercepts /f1/f2
+└── f2/
+    └── page.tsx      # /f1/f2 (actual)
+```
+
+**`f1/page.tsx`**
+```tsx
+import Link from "next/link";
+
+export default function F1Page() {
+    return <div>F1 Page
+        <Link href="/f1/f2">move to F2</Link>
+    </div>;
+}
+```
+
+**Behavior:**
+- **Click link from `/f1`** → Shows `(.)f2/page.tsx` (intercepted version)
+- **Direct visit `/f1/f2`** → Shows `f2/page.tsx` (actual route)
+- **Refresh on `/f1/f2`** → Shows `f2/page.tsx` (actual route)
+
+**`f1/(.)f2/page.tsx`**
+```tsx
+export default function F2Page() {
+    return <div>(.)F2 Page</div>;  // Intercepted version
+}
+```
+
+---
+
+#### 2. **`(..)` - One Level Up Interception**
+
+Intercepts a route **one segment level up** (parent level).
+
+**File Structure:**
+```
+f1/
+├── page.tsx           # /f1
+└── (..)f3/
+    └── page.tsx      # Intercepts /f3
+f3/
+└── page.tsx          # /f3 (actual)
+```
+
+**`f1/page.tsx`**
+```tsx
+import Link from "next/link";
+
+export default function F1Page() {
+    return <div>F1 Page
+        <Link href="/f3">move to F3</Link>
+    </div>;
+}
+```
+
+**Behavior:**
+- **Click link from `/f1`** → Shows `(..)f3/page.tsx` (intercepted)
+- **Direct visit `/f3`** → Shows `f3/page.tsx` (actual)
+
+**`f1/(..)f3/page.tsx`**
+```tsx
+export default function F3Page() {
+    return <div>(..)F3 Page</div>;  // Intercepted version
+}
+```
+
+---
+
+#### 3. **`(..)(..)`** - Two Levels Up Interception
+
+Intercepts a route **two segment levels up** (grandparent level).
+
+**File Structure:**
+```
+f1/
+└── f2/
+    ├── page.tsx           # /f1/f2
+    └── (..)(..)f4/
+        └── page.tsx      # Intercepts /f4
+f4/
+└── page.tsx              # /f4 (actual)
+```
+
+**`f1/f2/page.tsx`**
+```tsx
+import Link from "next/link";
+
+export default function F2Page() {
+    return <div>F2 Page
+        <Link href="/f4">move to F4</Link>
+    </div>;
+}
+```
+
+**Behavior:**
+- **Click link from `/f1/f2`** → Shows `(..)(..)f4/page.tsx` (intercepted)
+- **Direct visit `/f4`** → Shows `f4/page.tsx` (actual)
+
+**`f1/f2/(..)(..)f4/page.tsx`**
+```tsx
+export default function F4Page() {
+    return <div>(..)(..)F4 Page</div>;  // Intercepted version
+}
+```
+
+---
+
+#### 4. **`(...)`** - Root Level Interception
+
+Intercepts a route from the **app root**, regardless of current depth.
+
+**File Structure:**
+```
+f1/
+└── f2/
+    └── inner-f2/
+        ├── page.tsx           # /f1/f2/inner-f2
+        └── (...)f5/
+            └── page.tsx      # Intercepts /f5 from root
+f5/
+└── page.tsx                  # /f5 (actual)
+```
+
+**`f1/f2/inner-f2/page.tsx`**
+```tsx
+import Link from "next/link";
+
+export default function InnerF2Page() {
+    return <div>Inner F2 Page
+        <Link href="/f5">move to F5</Link>
+    </div>;
+}
+```
+
+**Behavior:**
+- **Click link from `/f1/f2/inner-f2`** → Shows `(...)f5/page.tsx` (intercepted)
+- **Direct visit `/f5`** → Shows `f5/page.tsx` (actual)
+
+**`f1/f2/inner-f2/(...)f5/page.tsx`**
+```tsx
+export default function F5Page() {
+    return <div>(...)F5 Page</div>;  // Intercepted version
+}
+```
+
+---
+
+### Navigation Behavior Summary
+
+| Action | Result |
+| :--- | :--- |
+| **Click `<Link>` from intercepting page** | Shows intercepted route |
+| **Direct URL navigation** | Shows actual route |
+| **Browser refresh** | Shows actual route |
+| **Back button** | Returns to previous page (intercepted route disappears) |
+
+---
+
+### Real-World Use Cases
+
+#### 1. **Photo Gallery Modal**
+```
+feed/
+├── page.tsx              # Photo grid
+└── (.)photo/
+    └── [id]/
+        └── page.tsx     # Modal overlay
+photo/
+└── [id]/
+    └── page.tsx         # Full photo page
+```
+- Click photo in feed → Modal overlay
+- Direct link `/photo/123` → Full page
+
+#### 2. **Login Modal**
+```
+dashboard/
+├── page.tsx
+└── (...)login/
+    └── page.tsx         # Login modal
+login/
+└── page.tsx             # Full login page
+```
+- Click "Login" from dashboard → Modal
+- Direct `/login` → Full page
+
+#### 3. **Product Quick View**
+```
+products/
+├── page.tsx             # Product list
+└── (.)product/
+    └── [id]/
+        └── page.tsx    # Quick view drawer
+product/
+└── [id]/
+    └── page.tsx        # Full product page
+```
+
+---
+
+### Important Notes
+
+- **Client-side navigation only**: Interception only works with `<Link>` component navigation
+- **Two versions required**: You need both the intercepting route AND the actual route
+- **URL updates**: The URL changes to the target route, but the intercepted content is shown
+- **Refresh behavior**: Refreshing shows the actual route, not the intercepted version
+- **Route groups ignored**: `(.)` doesn't count route groups like `(main)` when calculating levels
+
+---
+
+### Best Practices
+
+**1. Use for Contextual Content**
+```tsx
+// Good: Modal that maintains context
+feed/(.)photo/[id]/page.tsx  // Shows photo without losing feed position
+```
+
+**2. Provide Fallback Routes**
+```tsx
+// Always create the actual route for direct access
+photo/[id]/page.tsx  // Full page version
+```
+
+**3. Combine with Parallel Routes**
+```tsx
+// Powerful combination for modals
+@modal/(.)photo/[id]/page.tsx  // Modal slot
+```
+
+**4. Handle Close Actions**
+```tsx
+"use client";
+import { useRouter } from "next/navigation";
+
+export default function InterceptedPage() {
+    const router = useRouter();
+    return (
+        <div>
+            <button onClick={() => router.back()}>Close</button>
+        </div>
+    );
+}
+```
+
+---
+
+### Common Patterns
+
+#### Modal Pattern
+```
+app/
+├── @modal/
+│   └── (.)photo/
+│       └── [id]/
+│           └── page.tsx    # Modal
+├── photo/
+│   └── [id]/
+│       └── page.tsx        # Full page
+└── layout.tsx              # Renders {children} and {modal}
+```
+
+#### Drawer Pattern
+```
+products/
+├── (.)product/
+│   └── [id]/
+│       └── page.tsx        # Slide-in drawer
+└── product/
+    └── [id]/
+        └── page.tsx        # Full page
+```
+
+---
+
+### Practical Example: Photo Feed with Modal Interception
+
+This example demonstrates a real-world implementation of intercepted routes combined with parallel routes to create a photo gallery with modal overlays.
+
+#### Project Structure
+
+```
+app/(main)/photo-feed/
+├── @modal/                          # Parallel route slot
+│   ├── (.)[id]/
+│   │   └── page.tsx                # Intercepted modal view
+│   └── default.tsx                 # Default slot content (null)
+├── [id]/
+│   └── page.tsx                    # Full photo page
+├── photos/                         # Static images
+│   ├── 1.jpg
+│   ├── 2.jpg
+│   └── ...
+├── layout.tsx                      # Renders both children and modal slot
+├── page.tsx                        # Photo grid/feed
+└── wonders.tsx                     # Photo data
+```
+
+#### Implementation Details
+
+**1. Photo Feed Page (`page.tsx`)**
+
+Displays a grid of photos with links to individual photo pages:
+
+```tsx
+import Link from "next/link";
+import Image from "next/image";
+import wonders from "./wonders";
+
+export default function Home() {
+  return (
+    <main className="container mx-auto">
+      <h1 className="text-center text-3xl font-bold my-4">
+        New Wonders of the World
+      </h1>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {wonders.map(({ id, src, name }) => (
+          <Link key={id} href={`/photo-feed/${id}`}>
+            <Image
+              alt={name}
+              src={src}
+              width={500}
+              height={500}
+              className="w-full object-cover aspect-square"
+            />
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}
+```
+
+**2. Layout with Parallel Routes (`layout.tsx`)**
+
+Renders both the main content and the modal slot:
+
+```tsx
+export default function Layout(props: {
+  modal: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      {props.modal}
+      {props.children}
+    </>
+  );
+}
+```
+
+**3. Intercepted Modal Route (`@modal/(.)[id]/page.tsx`)**
+
+Shows photo in a modal when navigating from the feed:
+
+```tsx
+import Image from "next/image";
+import wondersImages, { WonderImage } from "../../wonders";
+import Modal from "@/src/app/components/Modal";
+
+export default async function PhotoModal({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const photo: WonderImage = wondersImages.find((p) => p.id === id)!;
+
+  return (
+    <Modal>
+      <Image
+        alt={photo.name}
+        src={photo.src}
+        className="w-full object-cover aspect-square"
+      />
+      <div className="bg-white p-4">
+        <h2 className="text-xl font-semibold">{photo.name}</h2>
+        <h3>{photo.photographer}</h3>
+        <h3>{photo.location}</h3>
+      </div>
+    </Modal>
+  );
+}
+```
+
+**4. Full Photo Page (`[id]/page.tsx`)**
+
+Shows the full photo page when accessed directly or after refresh:
+
+```tsx
+import Image from "next/image";
+import wondersImages, { WonderImage } from "../wonders";
+
+export default async function PhotoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const photo: WonderImage = wondersImages.find((p) => p.id === id)!;
+  
+  return (
+    <div className="container mx-auto my-10">
+      <div className="w-1/2 mx-auto">
+        <h1 className="text-center text-3xl font-bold my-4">{photo.name}</h1>
+        <Image
+          alt={photo.name}
+          src={photo.src}
+          className="w-full object-cover aspect-square"
+        />
+        <div className="bg-white py-4">
+          <h3>{photo.photographer}</h3>
+          <h3>{photo.location}</h3>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**5. Modal Component (`components/Modal.tsx`)**
+
+Reusable modal with close functionality:
+
+```tsx
+"use client";
+import { useCallback, useRef, useEffect, MouseEventHandler } from "react";
+import { useRouter } from "next/navigation";
+
+export default function Modal({ children }: { children: React.ReactNode }) {
+  const overlay = useRef(null);
+  const wrapper = useRef(null);
+  const router = useRouter();
+
+  const onDismiss = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const onClick: MouseEventHandler = useCallback(
+    (e) => {
+      if (e.target === overlay.current || e.target === wrapper.current) {
+        if (onDismiss) onDismiss();
+      }
+    },
+    [onDismiss, overlay, wrapper]
+  );
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") onDismiss();
+    },
+    [onDismiss]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onKeyDown]);
+
+  return (
+    <div
+      ref={overlay}
+      className="fixed z-10 left-0 right-0 top-0 bottom-0 mx-auto bg-black/60 p-10"
+      onClick={onClick}
+    >
+      <div
+        ref={wrapper}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:w-10/12 md:w-8/12 lg:w-2/5 p-6"
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+**6. Default Slot (`@modal/default.tsx`)**
+
+Returns null when no modal should be shown:
+
+```tsx
+export default function Default() {
+  return null;
+}
+```
+
+#### User Experience Flow
+
+**Scenario 1: Click from Feed**
+```
+1. User is on /photo-feed
+2. Clicks photo #3
+3. URL changes to /photo-feed/3
+4. Modal opens with photo (intercepted route)
+5. Feed remains visible in background
+6. User clicks outside or presses ESC
+7. Modal closes, returns to /photo-feed
+```
+
+**Scenario 2: Direct URL Access**
+```
+1. User navigates directly to /photo-feed/3
+2. Full photo page is displayed (actual route)
+3. No modal, no feed in background
+```
+
+**Scenario 3: Refresh**
+```
+1. User clicks photo from feed (modal opens)
+2. URL is /photo-feed/3
+3. User refreshes page
+4. Full photo page is displayed (actual route)
+5. Modal is gone
+```
+
+#### Key Benefits
+
+- **Maintains Context**: Users stay on the feed while viewing photos
+- **Shareable URLs**: Each photo has a unique URL that works independently
+- **Progressive Enhancement**: Works with or without JavaScript
+- **Better UX**: Faster navigation with modal, full page as fallback
+- **SEO Friendly**: Search engines index the full photo pages
+
+#### Important Notes
+
+- The `(.)` notation intercepts routes at the **same segment level**
+- Route groups like `(main)` are **ignored** when calculating interception levels
+- The `@modal` parallel route slot must have a `default.tsx` that returns null
+- Modal component uses `router.back()` to close, maintaining navigation history
+
+---
+
+### Summary
+
+**Intercepting routes** enable sophisticated UX patterns by showing alternative content during client-side navigation while preserving the ability to access the full route directly. The dot notation `(.)`, `(..)`, `(..)(..)`, and `(...)` provides flexible control over which routes to intercept based on the current location in the route hierarchy.
+
+---
