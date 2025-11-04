@@ -16,6 +16,7 @@ export default function Navbar() {
         { path: "/profile", label: "Profile" },
         { path: "/_lib", label: "Private Route" },
         { path: "/_underscore-route", label: "Underscore Route" },
+        { path: "/complex-dashboard", label: "Complex Dashboard" },
     ]
     return (
         <nav>

@@ -1074,3 +1074,363 @@ Metadata must always be defined in **Server Components** (`page.js` or `layout.j
 | **Global Defaults** | Exported `metadata` object in `app/layout.js`.               | Use `title: { default: '...', template: '...' }` to create a consistent title structure.     |
 | **Local Overrides** | Exported `metadata` object in a specific `page.js`.          | Use `title: { absolute: '...' }` to ignore the global template for that page.                |
 | **Dynamic Content** | Export an **`async function generateMetadata({ params })`**. | Allows you to fetch data based on route parameters and generate dynamic titles/descriptions. |
+
+---
+
+## 7. 🔀 Parallel Routes
+
+Parallel routes allow you to **simultaneously render multiple pages in the same layout** using **named slots**. This is particularly useful for complex dashboards and multi-panel interfaces.
+
+### Concept
+
+Parallel routes are defined using the **`@folder`** naming convention. Each folder prefixed with `@` becomes a **named slot** that can be independently rendered within a parent layout.
+
+#### Directory Structure
+
+```
+app/
+└── complex-dashboard/
+    ├── layout.tsx          # Receives slots as props
+    ├── page.tsx            # Optional default content
+    ├── @notifications/     # Named slot
+    │   └── page.tsx
+    ├── @revenue/          # Named slot
+    │   └── page.tsx
+    └── @users/            # Named slot
+        └── page.tsx
+```
+
+---
+
+### How It Works
+
+#### 1. Named Slots Definition
+
+Each `@folder` creates a named slot that becomes a prop in the parent layout:
+
+- `@notifications` → `notifications` prop
+- `@revenue` → `revenue` prop
+- `@users` → `users` prop
+
+#### 2. Layout Receives Slots as Props
+
+**Example: `app/complex-dashboard/layout.tsx`**
+
+```tsx
+export default function ComplexDashboardLayout({
+  children,
+  users,
+  revenue,
+  notifications,
+}: {
+  children: React.ReactNode;
+  users: React.ReactNode;
+  revenue: React.ReactNode;
+  notifications: React.ReactNode;
+}) {
+  return (
+    <div>
+      <header>Complex Dashboard</header>
+      {children}
+      <div className="flex gap-4">
+        <div className="flex-1 h-full flex flex-col gap-4 w-full">
+          <div className="flex-1">{users}</div>
+          <div className="flex-1">{revenue}</div>
+        </div>
+        <div className="flex-1 h-full">{notifications}</div>
+      </div>
+    </div>
+  );
+}
+```
+
+#### 3. Individual Slot Pages
+
+**`@users/page.tsx`**
+```tsx
+import Card from "@/src/app/components/Card";
+
+export default function UserAnalyticsPage() {
+  return <Card>User Analytics Page</Card>;
+}
+```
+
+**`@revenue/page.tsx`**
+```tsx
+import Card from "@/src/app/components/Card";
+
+export default function RevenueMetricsPage() {
+  return <Card>Revenue Metrics Page</Card>;
+}
+```
+
+**`@notifications/page.tsx`**
+```tsx
+import Card from "@/src/app/components/Card";
+
+export default function NotificationsPage() {
+  return <Card>Notifications Page</Card>;
+}
+```
+
+---
+
+### Key Benefits
+
+| Benefit | Description | Use Case |
+| :--- | :--- | :--- |
+| **Independent Loading States** | Each slot can have its own `loading.tsx` and `error.tsx` | Heavy data sections load independently without blocking the entire page |
+| **Sub-Navigation** | Each slot maintains its own navigation state | Email client with independent list and detail navigation |
+| **Conditional Rendering** | Render slots based on user roles, permissions, or logic | Admin panel showing different sections for different user types |
+| **Code Organization** | Separates complex sections into manageable modules | Large dashboards split into focused, maintainable components |
+| **Flexible Layouts** | Complete control over positioning without prop drilling | Custom grid layouts, split views, multi-column designs |
+| **Streaming & Suspense** | Each slot can stream independently | Improved perceived performance for data-heavy dashboards |
+
+---
+
+### Real-World Use Cases
+
+#### 1. **Analytics Dashboard**
+```
+/dashboard/
+  ├── @users/          # User metrics (slow query)
+  ├── @revenue/        # Revenue charts (fast query)
+  └── @notifications/  # Real-time notifications
+```
+Revenue loads instantly while users wait for analytics.
+
+#### 2. **Email Client**
+```
+/mail/
+  ├── @inbox/          # Email list
+  └── @preview/        # Email detail
+```
+Independent navigation in each panel.
+
+#### 3. **Admin Interface**
+```
+/admin/
+  ├── @sidebar/        # Navigation
+  ├── @main/           # Content area
+  └── @activity/       # Activity feed
+```
+Each section updates independently.
+
+#### 4. **A/B Testing**
+```tsx
+export default function Layout({ variant_a, variant_b }) {
+  const showVariantA = Math.random() > 0.5;
+  return showVariantA ? variant_a : variant_b;
+}
+```
+Conditionally render different implementations.
+
+---
+
+### Important Notes
+
+- **Slots are NOT route segments**: `@folder` doesn't affect the URL structure
+- **All slots render simultaneously**: Unlike nested routes, parallel routes render at the same time
+- **Props are automatic**: Next.js automatically passes slot content as props to the parent layout
+- **Optional `children`**: The layout can still receive regular `children` from a `page.tsx` in the same directory
+
+---
+
+### Comparison: Parallel Routes vs Nested Routes
+
+| Feature | Parallel Routes | Nested Routes |
+| :--- | :--- | :--- |
+| **URL Structure** | No effect on URL | Creates URL segments |
+| **Rendering** | Simultaneous | Sequential (parent → child) |
+| **Layout Props** | Named props (`users`, `revenue`) | `children` only |
+| **Independence** | Fully independent | Hierarchical dependency |
+| **Use Case** | Multi-panel UIs | Hierarchical navigation |
+
+---
+
+### Default Files (`default.tsx`)
+
+When using parallel routes, **`default.tsx`** files act as **fallbacks** for slots that don't have a matching route during navigation.
+
+#### The Problem
+
+When navigating to a sub-route within one parallel slot, Next.js needs to know what to render in the **other slots** that don't have a matching route.
+
+**Example Scenario:**
+
+```
+complex-dashboard/
+├── page.tsx                    # /complex-dashboard
+├── default.tsx                 # Fallback for children
+├── @notifications/
+│   ├── page.tsx               # /complex-dashboard
+│   └── archived/
+│       └── page.tsx           # /complex-dashboard/archived ✓
+├── @revenue/
+│   ├── page.tsx               # /complex-dashboard
+│   └── default.tsx            # Fallback when no match
+└── @users/
+    ├── page.tsx               # /complex-dashboard
+    └── default.tsx            # Fallback when no match
+```
+
+---
+
+#### How It Works
+
+**Scenario 1: Navigate to `/complex-dashboard`**
+
+All slots have matching `page.tsx` files:
+
+```tsx
+Layout receives:
+- children: <ComplexDashboardPage />
+- notifications: <NotificationsPage />
+- revenue: <RevenueMetricsPage />
+- users: <UserAnalyticsPage />
+```
+
+✅ All slots render their `page.tsx`
+
+---
+
+**Scenario 2: Navigate to `/complex-dashboard/archived`**
+
+Only `@notifications` has an `archived/page.tsx`:
+
+**Without `default.tsx` files:**
+- ❌ `@revenue` and `@users` would show 404 errors
+- ❌ Layout breaks because slots have no content
+
+**With `default.tsx` files:**
+```tsx
+Layout receives:
+- children: <ComplexDashboardDefaultPage />        // default.tsx
+- notifications: <ArchivedNotificationsPage />     // archived/page.tsx ✓
+- revenue: <RevenueMetricsDefaultPage />           // @revenue/default.tsx
+- users: <UserAnalyticsDefaultPage />              // @users/default.tsx
+```
+
+✅ Slots without matching routes fall back to `default.tsx`
+
+---
+
+#### Implementation Examples
+
+**`@revenue/default.tsx`**
+```tsx
+import Card from "@/src/app/components/Card";
+
+export default function RevenueMetricsDefaultPage() {
+    return <Card>Revenue Metrics Default Page</Card>;
+}
+```
+
+**`@users/default.tsx`**
+```tsx
+import Card from "@/src/app/components/Card";
+
+export default function UserAnalyticsDefaultPage() {
+    return <Card>User Analytics Default Page</Card>;
+}
+```
+
+**`default.tsx` (for children slot)**
+```tsx
+export default function ComplexDashboardDefaultPage() {
+    return <div>Complex Dashboard Default Page</div>;
+}
+```
+
+---
+
+#### Key Rules
+
+| Rule | Explanation |
+| :--- | :--- |
+| **Fallback mechanism** | Renders when a slot has no matching route for the current URL |
+| **Required for sub-routes** | Without it, unmatched slots will 404 when navigating to sub-routes |
+| **Per-slot basis** | Each slot (`@folder`) needs its own `default.tsx` |
+| **Children slot too** | The main `children` slot also needs a `default.tsx` at the parent level |
+| **Client-side only** | Only used during client-side navigation, not on initial page load |
+
+---
+
+#### Navigation Flow Example
+
+**User Journey:**
+
+1. **Visit `/complex-dashboard`**
+   - All slots render their `page.tsx` files
+
+2. **Click link to `/complex-dashboard/archived`**
+   - `@notifications` → renders `archived/page.tsx` ✓
+   - `@revenue` → no `archived/page.tsx`, falls back to `default.tsx`
+   - `@users` → no `archived/page.tsx`, falls back to `default.tsx`
+   - `children` → no `archived/page.tsx`, falls back to `default.tsx`
+
+3. **Click link back to `/complex-dashboard`**
+   - All slots return to their `page.tsx` files
+
+---
+
+#### Best Practices
+
+**1. Always Provide `default.tsx`**
+```tsx
+// Prevents 404 errors during navigation
+export default function DefaultSlot() {
+  return <div>Loading...</div>;
+}
+```
+
+**2. Match the Slot's Purpose**
+```tsx
+// Keep default content relevant to the slot
+export default function RevenueDefault() {
+  return <Card>Revenue Metrics</Card>; // Not "404" or unrelated content
+}
+```
+
+**3. Consider Using `null`**
+```tsx
+// If a slot shouldn't show anything when unmatched
+export default function DefaultSlot() {
+  return null;
+}
+```
+
+**4. Reuse Components**
+```tsx
+// Reuse the main page component if appropriate
+import RevenueMetricsPage from './page';
+
+export default RevenueMetricsPage;
+```
+
+---
+
+#### Common Mistake
+
+❌ **Forgetting `default.tsx`:**
+```
+@revenue/
+└── page.tsx        # ❌ Missing default.tsx
+```
+
+**Result:** When navigating to `/complex-dashboard/archived`, the `@revenue` slot will 404.
+
+✅ **Correct:**
+```
+@revenue/
+├── page.tsx
+└── default.tsx     # ✓ Fallback provided
+```
+
+---
+
+#### Summary
+
+**`default.tsx`** ensures that parallel routes remain **resilient during navigation**. When one slot navigates to a sub-route, other slots gracefully fall back to their default content instead of breaking the layout or showing 404 errors.
+
+---
